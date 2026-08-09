@@ -6,9 +6,7 @@ use std::sync::Arc;
 
 mod register;
 use register::register_handler;
-
-mod lib;
-use lib::AppConfig;
+use auth_spatial::AppConfig;
 
 #[tokio::main]
 async fn main() {
@@ -20,7 +18,7 @@ async fn main() {
         .unwrap_or_else(|_| "0.0.0.0:8081".to_string());
     let allowed_origin = std::env::var("ALLOWED_ORIGIN")
         .unwrap_or_else(|_| "http://localhost:5173".to_string());
-    let jwt_secret = std::env::var("JWT_SECRET")
+    let jwt_secret = std::env::var("JWT_SECRETS")
         .expect("JWT_SECRET must be set");
 
     let pool = PgPoolOptions::new()
