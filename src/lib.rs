@@ -46,7 +46,7 @@ pub struct Claims {
 
 impl Claims {
     pub fn new(username: String) -> Self {
-        let expiration = Utc::new()
+        let expiration = Utc::now()
             .checked_add_signed(Duration::hours(24))
             .expect("Valid timestamp")
             .timestamp();
@@ -94,6 +94,6 @@ impl IntoResponse for AppError {
             }
         };
 
-        (status, Json(ApiResponse { error: error_message }))
+        (status, Json(ApiResponse { error: error_message })).into_response()
     }
 }
