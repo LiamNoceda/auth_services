@@ -7,7 +7,8 @@ use std::sync::Arc;
 mod register;
 use register::register_handler;
 
-use auth_spatial::AppConfig;
+mod lib;
+use lib::AppConfig;
 
 #[tokio::main]
 async fn main() {

@@ -4,11 +4,11 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use argon2::Argon2;
+use argon2::{Argon2, PasswordHasher};
 use std::sync::Arc;
 use validator::Validate;
 
-use auth_spatial::{AppConfig, AuthRequest, AuthResponse, AppError, Claims};
+use crate::lib::{AppConfig, AuthRequest, AuthResponse, AppError, Claims};
 
 pub async fn register_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): Json<AuthRequest>,) -> Result<impl IntoResponse, AppError> {
     payload
