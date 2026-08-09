@@ -47,7 +47,7 @@ pub struct Claims {
 impl Claims {
     pub fn new(username: String) -> Self {
         let expiration = Utc::now()
-            .checked_add_signed(Duration::hours(24))
+            .checked_add_signed(Duration::days(180))
             .expect("Valid timestamp")
             .timestamp();
         
