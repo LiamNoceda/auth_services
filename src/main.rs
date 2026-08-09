@@ -18,7 +18,7 @@ async fn main() {
         .unwrap_or_else(|_| "0.0.0.0:8081".to_string());
     let allowed_origin = std::env::var("ALLOWED_ORIGIN")
         .unwrap_or_else(|_| "http://localhost:5173".to_string());
-    let jwt_secret = std::env::var("JWT_SECRETS")
+    let jwt_secret = std::env::var("JWT_SECRET")
         .expect("JWT_SECRET must be set");
 
     let pool = PgPoolOptions::new()
@@ -34,10 +34,12 @@ async fn main() {
         .await
         .expect("Failed run database migrations");
 
-    let origins = if allowed_origin == "*" {
-        AllowOrigin::any()
-    } else {
-        AllowOrigin::exact(allowed_origin.parse().unwrap())
+    let origins = match allowed_origin.parse() {
+        Ok(parsed_url) => AllowOrigin::exact(parsed_url),
+        Err(_) => {
+            eprintln!("CRITICAL: Invalid ALLOWED_ORIGIN format: '{}'. Falling back to safe mock origin", allowed_origin);
+            AllowOrigin::exact("http://localhost:5173".parse().unwrap())
+        }
     };
 
     let cors = CorsLayer::new()
