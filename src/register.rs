@@ -1,5 +1,5 @@
 use axum::{
-    response::{IntoResponse, Response},
+    response::IntoResponse,
     extract::State,
     http::StatusCode,
     Json,
@@ -8,61 +8,12 @@ use argon2::{
     password_hash::{PasswordHasher, SaltString},
     Argon2,
 };
-use serde::{Deserialize, Serialize,};
-use sqlx::PgPool;
 use std::sync::Arc;
 use validator::Validate;
 
-// Data Base configuration struct
-pub struct AppConfig {
-    pub db: PgPool,
-}
+use crate::{AppConfig, AuthRequest, AuthResponse, AppError};
 
-// Struct for register request
-#[derive(Deserialize, Validate)]
-pub struct RegisterRequest {
-    #[validate(length(min = 2, max = 55, message = "Username must be between 2 and 55 characters"))]
-    pub username: String,
-
-    #[validate(length(min = 8, max = 130, message = "The Password must be between 8 and 130 characters"))]
-    pub password: String,
-}
-
-// Struct for auth response
-#[derive(Serialize)]
-pub struct AuthResponse {
-    pub message: String,
-}
-
-#[derive(Serialize)]
-pub struct ErrorResponse {
-    pub error: String,
-}
-
-pub enum AppError {
-    ValidationError(String),
-    UserAlreadyExists,
-    DatabaseError(sqlx::Error),
-    InternalServerError,
-}
-
-impl IntoResponse for AppError {
-    fn into_response(self) -> Response {
-        let (status, error_messge) = match self {
-            AppError::ValidationError(msg) => (StatusCode::BAD_REQUEST, msg),
-            AppError::UserAlreadyExists => (StatusCode::CONFLICT, "Username is already taken".to_string()),
-            AppError::DatabaseError(e) => {
-                eprintln!("Database error occurred: {:?}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, "Database server error".to_string())
-            }
-            AppError::InternalServerError => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string()),
-        };
-
-        (status, Json(ErrorResponse { error: error_messge })).into_response()
-    }
-}
-
-pub async fn register_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): Json<RegisterRequest>,) -> Result<impl IntoResponse, AppError> {
+pub async fn register_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): Json<AuthRequest>,) -> Result<impl IntoResponse, AppError> {
     payload
     .validate()
     .map_err(|e| AppError::ValidationError(e.to_string()))?;
@@ -74,10 +25,14 @@ pub async fn register_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): 
         argon2
             .hash_password(password_to_hash.as_bytes(), &salt)
             .map(|hash| hash.to_string())
-            .map_err(|_| AppError::InternalServerError)
+            .map_err(|e| {
+                tracing::error!("Password hashing failed: {:?}", e);
+                sqlx::Error::WorkerCrashed
+            })
     })
     .await
-    .map_err(|_| AppError::InternalServerError)??;
+    .map_err(|_| AppError::DatabaseError(sqlx::Error::WorkerCrashed))?
+    .map_err(AppError::DatabaseError)?;
 
     sqlx::query!(
         "INSERT INTO users (username, password_hash) VALUES ($1, $2)",
