@@ -4,8 +4,8 @@ use tower_http::cors::{AllowOrigin, CorsLayer};
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 
-mod register_new;
-use register_new::register_handler;
+mod register;
+use register::register_handler;
 
 use auth_spatial::AppConfig;
 

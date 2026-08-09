@@ -4,14 +4,11 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use argon2::{
-    password_hash::{PasswordHasher, SaltString},
-    Argon2,
-};
+use argon2::Argon2;
 use std::sync::Arc;
 use validator::Validate;
 
-use crate::{AppConfig, AuthRequest, AuthResponse, AppError};
+use auth_spatial::{AppConfig, AuthRequest, AuthResponse, AppError, Claims};
 
 pub async fn register_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): Json<AuthRequest>,) -> Result<impl IntoResponse, AppError> {
     payload
@@ -20,7 +17,7 @@ pub async fn register_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): 
 
     let password_to_hash = payload.password;
     let hashed_password = tokio::task::spawn_blocking(move || {
-        let salt = SaltString::generate(&mut argon2::password_hash::rand_core::OsRng);
+        let salt = argon2::password_hash::SaltString::generate(&mut argon2::password_hash::rand_core::OsRng);
         let argon2 = Argon2::default();
         argon2
             .hash_password(password_to_hash.as_bytes(), &salt)
@@ -50,10 +47,14 @@ pub async fn register_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): 
         AppError::DatabaseError(e)
     })?;
 
+    let token = Claims::new(payload.username.clone())
+        .sign(&ctx.jwt_secret)?;
+
     Ok((
         StatusCode::CREATED,
         Json(AuthResponse { 
-            message: "User registered successfully".to_string() 
+            message: "User registered successfully".to_string(),
+            token
         }),
     ))
 }
