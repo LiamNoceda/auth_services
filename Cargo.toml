@@ -21,7 +21,6 @@ jsonwebtoken = "9.3"
 chrono = { version = "0.4", features = ["serde"] }
 base64 = "0.22"
 
-# utils
 [profile.release]
 opt-level = 3       
 lto = true          
