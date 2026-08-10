@@ -78,7 +78,6 @@ dependencies = [
  "sqlx",
  "tokio",
  "tower-http",
- "tracing",
  "validator",
 ]
 
