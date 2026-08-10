@@ -5,7 +5,10 @@ use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 
 mod register;
+mod login;
+
 use register::register_handler;
+use login::login_handler;
 use auth_spatial::AppConfig;
 
 #[tokio::main]
@@ -52,6 +55,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/api/auth/register", post(register_handler))
+        .route("/api/auth/login", post(login_handler))
         .layer(cors)
         .with_state(shared_state);
 
