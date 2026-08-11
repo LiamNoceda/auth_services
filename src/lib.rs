@@ -61,7 +61,7 @@ impl Claims {
         let raw_secret = BASE64_STANDARD
             .decode(secret_base64.trim())
             .map_err(|err| {
-                eprintln!("Failed to decode JWT_SECRET from Base64: {:?}", err);
+                tracing::error!("Failed to decode JWT_SECRET from Base64: {:?}", err);
                 AppError::DatabaseError(sqlx::Error::WorkerCrashed)
             })?;
 
@@ -69,7 +69,7 @@ impl Claims {
 
         encode(&Header::default(), self, &key)
             .map_err(|err| {
-                eprintln!("JWT signing failed: {:?}", err);
+                tracing::error!("JWT signing failed: {:?}", err);
                 AppError::DatabaseError(sqlx::Error::WorkerCrashed)
             })
     }
@@ -89,7 +89,7 @@ impl IntoResponse for AppError {
             Self::UserAlreadyExists => (StatusCode::CONFLICT, "Username is already taken".to_string()),
             Self::InvalidCredentials => (StatusCode::UNAUTHORIZED, "Invalid username or password".to_string()),
             Self::DatabaseError(err) => {
-                eprintln!("Database error occurred: {:?}", err);
+                tracing::error!("Database error occurred: {:?}", err);
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
             }
         };

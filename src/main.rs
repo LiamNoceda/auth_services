@@ -40,7 +40,7 @@ async fn main() {
     let origins = match allowed_origin.parse() {
         Ok(parsed_url) => AllowOrigin::exact(parsed_url),
         Err(_) => {
-            eprintln!("CRITICAL: Invalid ALLOWED_ORIGIN format: '{}'. Falling back to safe mock origin", allowed_origin);
+            tracing::error!("CRITICAL: Invalid ALLOWED_ORIGIN format: '{}'. Falling back to safe mock origin", allowed_origin);
             AllowOrigin::exact("http://localhost:5173".parse().unwrap())
         }
     };

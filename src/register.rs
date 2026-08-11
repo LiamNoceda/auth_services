@@ -23,7 +23,7 @@ pub async fn register_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): 
             .hash_password(password_to_hash.as_bytes(), &salt)
             .map(|hash| hash.to_string())
             .map_err(|e| {
-                eprintln!("Password hashing failed: {:?}", e);
+                tracing::error!("Password hashing failed: {:?}", e);
                 sqlx::Error::WorkerCrashed
             })
     })
