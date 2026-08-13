@@ -42,17 +42,20 @@ pub struct ApiResponse {
 pub struct Claims {
     pub sub: String,
     pub exp: i64,
+    pub iat: i64,
 }
 
 impl Claims {
     pub fn new(username: String) -> Self {
-        let expiration = Utc::now()
-            .checked_add_signed(Duration::days(180))
+        let issued_at = Utc::now();
+        let expiration = issued_at
+            .checked_add_signed(Duration::days(130))
             .expect("Valid timestamp")
             .timestamp();
         
         Self {
             sub: username,
+            iat: issued_at.timestamp(),
             exp: expiration,
         }
     }
