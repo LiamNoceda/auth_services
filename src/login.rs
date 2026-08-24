@@ -11,7 +11,7 @@ use argon2::{
 use std::sync::Arc;
 use validator::Validate;
 
-use auth_spatial::{AppConfig, AuthRequest, AuthResponse, AppError, Claims};
+use auth_spatial::{AppConfig, AuthRequest, AuthResponse, AppError};
 
 pub async fn login_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): Json<AuthRequest>,) -> Result<impl IntoResponse, AppError> {
     payload

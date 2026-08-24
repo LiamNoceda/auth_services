@@ -8,7 +8,7 @@ use argon2::{Argon2, PasswordHasher};
 use std::sync::Arc;
 use validator::Validate;
 
-use auth_spatial::{AppConfig, AuthRequest, AuthResponse, AppError, Claims};
+use auth_spatial::{AppConfig, AuthRequest, AuthResponse, AppError};
 
 pub async fn register_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): Json<AuthRequest>,) -> Result<impl IntoResponse, AppError> {
     payload
