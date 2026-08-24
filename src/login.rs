@@ -28,7 +28,7 @@ pub async fn login_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): Jso
     .fetch_optional(&ctx.db)
     .await?;
 
-    let (user_id, storted_hash) = match &user {
+    let (user_id, stored_hash) = match &user {
         Some(u) => (Some(u.id), u.password_hash.clone()),
         None => (None, DUMMY_HASH.to_string()),
     };
@@ -43,7 +43,7 @@ pub async fn login_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): Jso
     })
     .await
     .map_err(|_| AppError::DatabaseError(sqlx::Error::WorkerCrashed))?
-    .is_ok();
+    .unwrap_or(false);
 
     if !verify_ok || user_id.is_none() {
         return Err(AppError::InvalidCredentials);
