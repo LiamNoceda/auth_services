@@ -4,7 +4,6 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize,};
-use base64::{prelude::BASE64_STANDARD, Engine};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use chrono::{Duration, Utc};
 use sqlx::PgPool;
