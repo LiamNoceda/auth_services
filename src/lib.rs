@@ -63,7 +63,7 @@ impl TokenSpatial {
         Self { jwt: secret.into_bytes(), }
     }
 
-    pub fn create_access_token(&self, user_id: i64) -> Result<TokenPair, jsonwebtoken::errors::Error> {
+    pub fn create_access_token(&self, user_id: i64) -> Result<String, jsonwebtoken::errors::Error> {
         let exp = (Utc::now() + Duration::minutes(ACCESS_TOKEN_MINUTES)).timestamp() as usize;
         let claims = Claims { sub: user_id, exp };
         let encoding_key = EncodingKey::from_secret(&self.jwt);
@@ -92,12 +92,12 @@ impl TokenSpatial {
 
     pub async fn issue_token_pair(&self, pool: &PgPool, user_id: i64) -> Result<TokenPair, AppError> {
         let access_token = self.create_access_token(user_id)?;
-        let refresh_token = self.generate_opaque_token();
-        let token_hash = self.hash_token(&refresh_token);
+        let refresh_token = Self::generate_opaque_token();
+        let token_hash = Self::hash_token(&refresh_token);
         let expires_at = Utc::now() + Duration::days(REFRESH_TOKEN_DAYS);
 
         sqlx::query!(
-            "INSERT INTO refresh_token (user_id, token_hash, expires_at) VALUES ($1, $2, $3)",
+            "INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)",
             user_id,
             token_hash,
             expires_at,
@@ -117,7 +117,7 @@ impl TokenSpatial {
             FROM refresh_tokens
             WHERE token_hash = $1
             "#,
-            token_hash,
+            hash_token,
         )
         .fetch_optional(pool)
         .await?
@@ -125,7 +125,7 @@ impl TokenSpatial {
 
         if row.revoked_at.is_some() {
             sqlx::query!(
-                "UPDATE refresh_tokens SET revoked_at = now() WHERE user_id = $1 AND rewoked_at is NULL",
+                "UPDATE refresh_tokens SET revoked_at = now() WHERE user_id = $1 AND revoked_at is NULL",
                 row.user_id,
             )
             .execute(pool)
@@ -163,6 +163,7 @@ pub enum AppError {
     ValidationError(String),
     UserAlreadyExists,
     InvalidCredentials,
+    InvalidRefreshToken,
     DatabaseError(sqlx::Error),
     TokenError(jsonwebtoken::errors::Error),
 }
