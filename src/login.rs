@@ -37,9 +37,9 @@ pub async fn login_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): Jso
     let verify_ok = tokio::task::spawn_blocking(move || {
         let parsed_hash = PasswordHash::new(&stored_hash)
             .map_err(|_| ())?;
-        Argon2::default()
+        Ok::<bool, ()>(Argon2::default()
             .verify_password(password_to_verify.as_bytes(), &parsed_hash)
-            .is_ok()
+            .is_ok())
     })
     .await
     .map_err(|_| AppError::DatabaseError(sqlx::Error::WorkerCrashed))?
