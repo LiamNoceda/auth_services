@@ -29,20 +29,23 @@ pub async fn login_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): Jso
     .await?;
 
     let (user_id, storted_hash) = match &user {
-        Some(u) => (Some(u.id), u.parsed_hash.clone()),
+        Some(u) => (Some(u.id), u.password_hash.clone()),
         None => (None, DUMMY_HASH.to_string()),
     };
 
     let password_to_verify = payload.password;
     let verify_ok = tokio::task::spawn_blocking(move || {
-        let parsed_hash = PasswordHash::new(&stored_hash)?;
-        Argon2::default().verify_password(password_to_verify.as_bytes(), &parsed_hash)
+        let parsed_hash = PasswordHash::new(&stored_hash)
+            .map_err(|_| ())?;
+        Ok(Argon2::default()
+            .verify_password(password_to_verify.as_bytes(), &parsed_hash)
+            .is_ok())
     })
     .await
     .map_err(|_| AppError::DatabaseError(sqlx::Error::WorkerCrashed))?
     .is_ok();
 
-    of !verify_ok || user_id.is_none() {
+    if !verify_ok || user_id.is_none() {
         return Err(AppError::InvalidCredentials);
     }
     let user_id = user_id.unwrap();
