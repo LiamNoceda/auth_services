@@ -8,6 +8,9 @@ use jsonwebtoken::{encode, EncodingKey, Header};
 use chrono::{Duration, Utc};
 use sqlx::PgPool;
 use validator::Validate;
+use rand::RngCore;
+use sha2::{Digest, Sha256};
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 
 pub struct AppConfig {
     pub db: PgPool,
