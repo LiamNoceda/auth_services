@@ -31,12 +31,12 @@ pub async fn register_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): 
     .map_err(|_| AppError::DatabaseError(sqlx::Error::WorkerCrashed))?
     .map_err(AppError::DatabaseError)?;
 
-    sqlx::query!(
-        "INSERT INTO users (username, password_hash) VALUES ($1, $2)",
+    let row = sqlx::query!(
+        "INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id",
         &payload.username,
         &hashed_password
     )
-    .execute(&ctx.db)
+    .fetch_one(&ctx.db)
     .await
     .map_err(|e| {
         if let Some(db_error) = e.as_database_error() {
@@ -47,14 +47,14 @@ pub async fn register_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): 
         AppError::DatabaseError(e)
     })?;
 
-    let token = Claims::new(payload.username.clone())
-        .sign(&ctx.jwt_secret)?;
+    let tokens = ctx.token_spatial.create_token_pair(row.id as i64)?;
 
     Ok((
         StatusCode::CREATED,
         Json(AuthResponse { 
             message: "User registered successfully".to_string(),
-            token
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token,
         }),
     ))
 }

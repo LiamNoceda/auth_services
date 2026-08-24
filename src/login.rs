@@ -19,7 +19,7 @@ pub async fn login_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): Jso
         .map_err(|e| AppError::ValidationError(e.to_string()))?;
 
     let user = sqlx::query!(
-        "Select password_hash from users where username = $1",
+        "Select id, password_hash from users where username = $1",
         &payload.username
     )
     .fetch_optional(&ctx.db)
@@ -41,14 +41,14 @@ pub async fn login_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): Jso
     .await
     .map_err(|_| AppError::DatabaseError(sqlx::Error::WorkerCrashed))??;
 
-    let token = Claims::new(payload.username.clone())
-        .sign(&ctx.jwt_secret)?;
+    let tokens = ctx.token_spatial.create_token_pair(user.id as i64)?;
 
     Ok((
         StatusCode::OK,
             Json(AuthResponse {
                 message: "Logged in successfully".to_string(),
-                token,
+                access_token: tokens.access_token,
+                refresh_token: tokens.refresh_token,
         }),
     ))
 }

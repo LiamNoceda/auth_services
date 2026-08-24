@@ -6,10 +6,12 @@ use std::sync::Arc;
 
 mod register;
 mod login;
+mod refresh;
 
 use register::register_handler;
 use login::login_handler;
-use auth_spatial::AppConfig;
+use refresh::refresh_handler;
+use auth_spatial::{AppConfig, TokenSpatial};
 
 #[tokio::main]
 async fn main() {
@@ -51,11 +53,13 @@ async fn main() {
         .allow_headers([CONTENT_TYPE, AUTHORIZATION])
         .allow_credentials(allowed_origin != "*");
 
-    let shared_state = Arc::new(AppConfig { db: pool, jwt_secret, });
+    let token_spatial = TokenSpatial::new(jwt_secret);
+    let shared_state = Arc::new(AppConfig { db: pool, token_spatial, });
 
     let app = Router::new()
         .route("/api/auth/register", post(register_handler))
         .route("/api/auth/login", post(login_handler))
+        .route("/api/auth/refresh", post(refresh_handler))
         .layer(cors)
         .with_state(shared_state);
 

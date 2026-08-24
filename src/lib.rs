@@ -13,7 +13,7 @@ use validator::Validate;
 // Data Base configuration struct
 pub struct AppConfig {
     pub db: PgPool,
-    pub jwt_secret: String,
+    pub token_spatial: TokenSpatial,
 }
 
 // Struct for register request
@@ -30,7 +30,8 @@ pub struct AuthRequest {
 #[derive(Serialize)]
 pub struct AuthResponse {
     pub message: String,
-    pub token: String,
+    pub access_token: String,
+    pub refresh_token: String,
 }
 
 #[derive(Serialize)]
@@ -40,41 +41,53 @@ pub struct ApiResponse {
 
 #[derive(Serialize, Deserialize)]
 pub struct Claims {
-    pub sub: String,
-    pub exp: i64,
-    pub iat: i64,
+    pub sub: i64,
+    pub exp: usize,
 }
 
-impl Claims {
-    pub fn new(username: String) -> Self {
-        let issued_at = Utc::now();
-        let expiration = issued_at
-            .checked_add_signed(Duration::days(130))
-            .expect("Valid timestamp")
-            .timestamp();
-        
-        Self {
-            sub: username,
-            iat: issued_at.timestamp(),
-            exp: expiration,
-        }
+#[derive(Serialize)]
+pub struct TokenPair {
+    pub access_token: String,
+    pub refresh_token: String,
+}
+
+pub struct TokenSpatial {
+    pub jwt: Vec<u8>,
+}
+
+impl TokenSpatial {
+    pub fn new(secret: String) -> Self {
+        Self { jwt: secret.into_bytes(), }
     }
 
-    pub fn sign(&self, secret_base64: &str) -> Result<String, AppError> {
-        let raw_secret = BASE64_STANDARD
-            .decode(secret_base64.trim())
-            .map_err(|err| {
-                tracing::error!("Failed to decode JWT_SECRET from Base64: {:?}", err);
-                AppError::DatabaseError(sqlx::Error::WorkerCrashed)
-            })?;
+    pub fn create_token_pair(&self, user_id: i64) -> Result<TokenPair, jsonwebtoken::errors::Error> {
+        let access_exp = (Utc::now() + Duration::minutes(15)).timestamp() as usize;
+        let refresh_exp = (Utc::now() + Duration::days(180)).timestamp() as usize;
 
-        let key = EncodingKey::from_secret(&raw_secret);
+        let access_claim = Claims { sub: user_id, exp: access_exp };
+        let refresh_claim = Claims { sub: user_id, exp: refresh_exp };
 
-        encode(&Header::default(), self, &key)
-            .map_err(|err| {
-                tracing::error!("JWT signing failed: {:?}", err);
-                AppError::DatabaseError(sqlx::Error::WorkerCrashed)
-            })
+        let encoding_key = EncodingKey::from_secret(&self.jwt);
+
+        let access_token = encode(&Header::default(), &access_claim, &encoding_key)?;
+        let refresh_token = encode(&Header::default(), &refresh_claim, &encoding_key)?;
+
+        Ok(TokenPair {
+            access_token,
+            refresh_token,
+        })
+    }
+
+    pub fn verify_token(&self, token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
+        use jsonwebtoken::{decode, DecodingKey, Validation};
+
+        let token_data = decode::<Claims>(
+            token,
+            &DecodingKey::from_secret(&self.jwt),
+            &Validation::default(),
+        )?;
+
+        Ok(token_data.claims)
     }
 }
 
@@ -83,6 +96,7 @@ pub enum AppError {
     UserAlreadyExists,
     InvalidCredentials,
     DatabaseError(sqlx::Error),
+    TokenError(jsonwebtoken::errors::Error),
 }
 
 impl IntoResponse for AppError {
@@ -95,8 +109,24 @@ impl IntoResponse for AppError {
                 tracing::error!("Database error occurred: {:?}", err);
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
             }
+            Self::TokenError(err) => {
+                tracing::error!("JWT error occurred: {:?}", err);
+                (StatusCode::INTERNAL_SERVER_ERROR, "Token generation failed".to_string())
+            }
         };
 
         (status, Json(ApiResponse { error: error_message })).into_response()
+    }
+}
+
+impl From<jsonwebtoken::errors::Error> for AppError {
+    fn from(err: jsonwebtoken::errors::Error) -> Self {
+        Self::TokenError(err)
+    }
+}
+
+impl From<sqlx::Error> for AppError {
+    fn from(err: sqlx::Error) -> Self {
+        Self::DatabaseError(err)
     }
 }
