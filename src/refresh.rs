@@ -14,9 +14,10 @@ pub struct RefreshRequest {
 }
 
 pub async fn refresh_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): Json<RefreshRequest>) -> Result<impl IntoResponse, AppError> {
-    let claims = ctx.token_spatial.verify_token(&payload.refresh_token)?;
-
-    let tokens = ctx.token_spatial.create_token_pair(claims.sub)?;
+    let tokens = ctx
+    .token_spatial
+    .rotate_refresh_token(&ctx.db, &payload.refresh_token)
+    .await?;
 
     Ok(Json(AuthResponse {
         message: "Tokens refreshed successfully".to_string(),
