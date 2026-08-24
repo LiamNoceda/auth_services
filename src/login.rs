@@ -35,7 +35,7 @@ pub async fn login_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): Jso
 
     let password_to_verify = payload.password;
     let verify_ok = tokio::task::spawn_blocking(move || {
-        if let parsed_hash = PasswordHash::new(&stored_hash)
+        let parsed_hash = PasswordHash::new(&stored_hash)
             .map_err(|_| ())?;
         Ok(Argon2::default()
             .verify_password(password_to_verify.as_bytes(), &parsed_hash)
