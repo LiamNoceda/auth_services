@@ -96,6 +96,8 @@ impl TokenSpatial {
         let token_hash = Self::hash_token(&refresh_token);
         let expires_at = Utc::now() + Duration::days(REFRESH_TOKEN_DAYS);
 
+        let expires_at: DateTime<Utc> = Utc::now() + Duration::days(REFRESH_TOKEN_DAYS);
+
         sqlx::query!(
             "INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)",
             user_id,
