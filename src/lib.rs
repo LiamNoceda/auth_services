@@ -138,7 +138,7 @@ impl TokenSpatial {
         }
 
         let new_pair = self.issue_token_pair(pool, row.user_id).await?;
-        let new_hash = self.hash_token(&new_pair.refresh_token);
+        let new_hash = Self::hash_token(&new_pair.refresh_token);
 
         let new_row_id = sqlx::query_scalar!(
             "SELECT id FROM refresh_tokens WHERE token_hash = $1",
