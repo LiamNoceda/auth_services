@@ -126,7 +126,7 @@ impl TokenSpatial {
                 row.user_id,
             )
             .execute(pool)
-            .await>;
+            .await?;
             return Err(AppError::InvalidRefreshToken);
         }
 
