@@ -94,7 +94,6 @@ impl TokenSpatial {
         let access_token = self.create_access_token(user_id)?;
         let refresh_token = Self::generate_opaque_token();
         let token_hash = Self::hash_token(&refresh_token);
-        let expires_at = Utc::now() + Duration::days(REFRESH_TOKEN_DAYS);
 
         let expires_at: DateTime<Utc> = Utc::now() + Duration::days(REFRESH_TOKEN_DAYS);
 
@@ -115,7 +114,7 @@ impl TokenSpatial {
 
         let row = sqlx::query!(
             r#"
-            SELECT id, user_id, expires_at, revoked_at
+            SELECT id, user_id, expires_at AS "expires_at: DateTime<Utc>", revoked_at AS "revoked_at: DateTime<Utc>"
             FROM refresh_tokens
             WHERE token_hash = $1
             "#,
@@ -176,6 +175,7 @@ impl IntoResponse for AppError {
             Self::ValidationError(msg) => (StatusCode::BAD_REQUEST, msg),
             Self::UserAlreadyExists => (StatusCode::CONFLICT, "Username is already taken".to_string()),
             Self::InvalidCredentials => (StatusCode::UNAUTHORIZED, "Invalid username or password".to_string()),
+            Self::InvalidRefreshToken => (StatusCode::UNAUTHORIZED, "Invalid or expired refresh token".to_string()),
             Self::DatabaseError(err) => {
                 tracing::error!("Database error occurred: {:?}", err);
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
