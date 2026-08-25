@@ -18,11 +18,8 @@ argon2 = { version = "0.5.3", features = ["password-hash"] }
 validator = { version = "0.21.0", features = ["derive"] }
 
 # auth
-rand = "0.8"
-sha2 = "0.10"
 jsonwebtoken = "9.3"
 chrono = { version = "0.4", features = ["serde"] }
-base64 = "0.22"
 
 [profile.release]
 opt-level = 3       
