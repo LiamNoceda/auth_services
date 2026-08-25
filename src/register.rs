@@ -51,8 +51,6 @@ pub async fn register_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): 
         StatusCode::CREATED,
         Json(AuthResponse { 
             message: "User registered successfully".to_string(),
-            access_token: tokens.access_token,
-            refresh_token: tokens.refresh_token,
         }),
     ))
 }

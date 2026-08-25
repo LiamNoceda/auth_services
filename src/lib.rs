@@ -37,9 +37,7 @@ pub enum AppError {
     ValidationError(String),
     UserAlreadyExists,
     InvalidCredentials,
-    InvalidRefreshToken,
     DatabaseError(sqlx::Error),
-    TokenError(jsonwebtoken::errors::Error),
 }
 
 impl IntoResponse for AppError {

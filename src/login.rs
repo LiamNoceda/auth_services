@@ -23,16 +23,18 @@ pub async fn login_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): Jso
         &payload.username
     )
     .fetch_optional(&ctx.db)
-    .await?;
+    .await
+    .map_err(AppError::DatabaseError)?
+    .ok_or(AppError::InvalidCredentials)?;
 
     let password_to_verify = payload.password;
     let stored_hash = user.password_hash;
-    let verify_ok = tokio::task::spawn_blocking(move || {
+    tokio::task::spawn_blocking(move || {
         let parsed_hash = PasswordHash::new(&stored_hash)
             .map_err(|_| AppError::InvalidCredentials)?;
         Argon2::default()
             .verify_password(password_to_verify.as_bytes(), &parsed_hash)
-            .is_ok()
+            .map_err(|_| AppError::InvalidCredentials)
     })
     .await
     .map_err(|_| AppError::DatabaseError(sqlx::Error::WorkerCrashed))?;
@@ -41,8 +43,6 @@ pub async fn login_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): Jso
         StatusCode::OK,
         Json(AuthResponse {
             message: "Logged in successfully".to_string(),
-            access_token: tokens.access_token,
-            refresh_token: tokens.refresh_token,
         }),
     ))
 }
