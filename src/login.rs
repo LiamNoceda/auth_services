@@ -13,9 +13,6 @@ use validator::Validate;
 
 use auth_spatial::{AppConfig, AuthRequest, AuthResponse, AppError};
 
-const DUMMY_HASH: &str =
-    "$argon2id$v=19$m=19456,t=2,p=1$c29tZXJhbmRvbXNhbHQ$Q2hhbmdlTWVCZWZvcmVQcm9kdWN0aW9u";
-
 pub async fn login_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): Json<AuthRequest>,) -> Result<impl IntoResponse, AppError> {
     payload
         .validate()
@@ -28,29 +25,17 @@ pub async fn login_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): Jso
     .fetch_optional(&ctx.db)
     .await?;
 
-    let (user_id, stored_hash) = match &user {
-        Some(u) => (Some(u.id), u.password_hash.clone()),
-        None => (None, DUMMY_HASH.to_string()),
-    };
-
     let password_to_verify = payload.password;
+    let stored_hash = user.password_hash;
     let verify_ok = tokio::task::spawn_blocking(move || {
         let parsed_hash = PasswordHash::new(&stored_hash)
-            .map_err(|_| ())?;
-        Ok::<bool, ()>(Argon2::default()
+            .map_err(|_| AppError::InvalidCredentials)?;
+        Argon2::default()
             .verify_password(password_to_verify.as_bytes(), &parsed_hash)
-            .is_ok())
+            .is_ok()
     })
     .await
-    .map_err(|_| AppError::DatabaseError(sqlx::Error::WorkerCrashed))?
-    .unwrap_or(false);
-
-    if !verify_ok || user_id.is_none() {
-        return Err(AppError::InvalidCredentials);
-    }
-    let user_id = user_id.unwrap();
-
-    let tokens = ctx.token_spatial.issue_token_pair(&ctx.db, user_id).await?;
+    .map_err(|_| AppError::DatabaseError(sqlx::Error::WorkerCrashed))?;
 
     Ok((
         StatusCode::OK,

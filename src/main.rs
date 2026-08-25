@@ -53,7 +53,6 @@ async fn main() {
         .allow_headers([CONTENT_TYPE, AUTHORIZATION])
         .allow_credentials(allowed_origin != "*");
 
-    let token_spatial = TokenSpatial::new(jwt_secret);
     let shared_state = Arc::new(AppConfig { db: pool, token_spatial, });
 
     let app = Router::new()

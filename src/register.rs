@@ -47,8 +47,6 @@ pub async fn register_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): 
         AppError::DatabaseError(e)
     })?;
 
-    let tokens = ctx.token_spatial.issue_token_pair(&ctx.db, row.id).await?;
-
     Ok((
         StatusCode::CREATED,
         Json(AuthResponse { 
