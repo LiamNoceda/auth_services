@@ -13,14 +13,18 @@ use auth_spatial::AppConfig;
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .init();
+
     dotenvy::dotenv().ok();
 
     let db_url = std::env::var("DATABASE_URL")
         .expect("DATABASE_URL must be set");
     let server_url = std::env::var("SERVER_URL")
-        .unwrap_or_else(|_| "0.0.0.0:8081".to_string());
+        .unwrap_or_else(|_| "127.0.0.1:8081".to_string());
     let allowed_origin = std::env::var("ALLOWED_ORIGIN")
-        .unwrap_or_else(|_| "http://localhost:5173".to_string());
+        .unwrap_or_else(|_| "http://127.0.0.1:5500".to_string());
     let jwt_secret = std::env::var("JWT_SECRET")
         .expect("JWT_SECRET must be set");
 
@@ -31,6 +35,13 @@ async fn main() {
         .connect(&db_url)
         .await
         .expect("Failed to connect to Postgres");
+
+    // Добавь это сразу после создания pool в main.rs:
+    sqlx::query("SET search_path TO auth, public")
+        .execute(&pool)
+        .await
+        .expect("Не удалось установить search_path");
+
 
     sqlx::migrate!("./migrations")
         .run(&pool)
@@ -46,10 +57,10 @@ async fn main() {
     };
 
     let cors = CorsLayer::new()
-        .allow_origin(origins)
-        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
-        .allow_headers([CONTENT_TYPE, AUTHORIZATION])
-        .allow_credentials(allowed_origin != "*");
+        .allow_origin(tower_http::cors::Any)
+        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS])
+        .allow_headers([CONTENT_TYPE, AUTHORIZATION]);
+        //.allow_credentials(allowed_origin != "*");
 
     let shared_state = Arc::new(AppConfig { db: pool, });
 
@@ -57,6 +68,7 @@ async fn main() {
         .route("/api/auth/register", post(register_handler))
         .route("/api/auth/login", post(login_handler))
         .layer(cors)
+        .layer(tower_http::trace::TraceLayer::new_for_http())
         .with_state(shared_state);
 
     let listener = tokio::net::TcpListener::bind(server_url).await.unwrap();

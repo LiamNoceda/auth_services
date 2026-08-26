@@ -31,8 +31,10 @@ pub async fn register_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): 
     .map_err(|_| AppError::DatabaseError(sqlx::Error::WorkerCrashed))?
     .map_err(AppError::DatabaseError)?;
 
-    let row = sqlx::query!(
-        "INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id",
+    let _row = sqlx::query!(
+        "INSERT INTO auth.techroom (username, password_hash)
+         VALUES ($1, $2) 
+         RETURNING id",
         &payload.username,
         &hashed_password
     )

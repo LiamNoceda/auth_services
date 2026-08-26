@@ -19,7 +19,7 @@ pub async fn login_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): Jso
         .map_err(|e| AppError::ValidationError(e.to_string()))?;
 
     let user = sqlx::query!(
-        "Select id, password_hash FROM users WHERE username = $1",
+        "Select id, password_hash FROM auth.techroom WHERE username = $1",
         &payload.username
     )
     .fetch_optional(&ctx.db)
@@ -37,7 +37,7 @@ pub async fn login_handler(State(ctx): State<Arc<AppConfig>>, Json(payload): Jso
             .map_err(|_| AppError::InvalidCredentials)
     })
     .await
-    .map_err(|_| AppError::DatabaseError(sqlx::Error::WorkerCrashed))?;
+    .map_err(|_| AppError::DatabaseError(sqlx::Error::WorkerCrashed))??;
 
     Ok((
         StatusCode::OK,
